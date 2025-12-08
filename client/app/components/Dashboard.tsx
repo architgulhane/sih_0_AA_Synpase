@@ -1,13 +1,17 @@
+'use client';
+
 import { Database, Dna, Sparkles, MapPin } from 'lucide-react';
-import { useAnalysis } from '../context/AnalysisContext';
+import 'maplibre-gl/dist/maplibre-gl.css';
+
+// ✅ Correct imports for MapLibre
+import Map, { NavigationControl, Source, Layer } from "react-map-gl/maplibre";
+
 
 export default function Dashboard() {
-  const { analysisData } = useAnalysis();
-  
   const stats = [
-    { label: 'Total Samples', value: analysisData.totalReads.toLocaleString(), icon: Database, color: 'blue' },
-    { label: 'Taxa Identified', value: analysisData.totalClusters.toLocaleString(), icon: Dna, color: 'green' },
-    { label: 'Novel Taxa', value: analysisData.novelTaxa.toString(), icon: Sparkles, color: 'purple' },
+    { label: 'Total Samples', value: '1,247', icon: Database, color: 'blue' },
+    { label: 'Taxa Identified', value: '3,892', icon: Dna, color: 'green' },
+    { label: 'Novel Taxa', value: '156', icon: Sparkles, color: 'purple' },
     { label: 'Active Sites', value: '12', icon: MapPin, color: 'orange' },
   ];
 
@@ -18,50 +22,94 @@ export default function Dashboard() {
     { name: 'Cold Seeps', percentage: 15, color: 'bg-purple-600' },
   ];
 
-  const recentAnalyses = analysisData.recentAnalyses;
-  
-  // Generate heatmap data from real taxa data or use fallback
-  const generateHeatmapData = () => {
-    if (analysisData.taxaAbundance.length > 0) {
-      // Use real data - simulate 8 sites by distributing the abundance
-      return analysisData.taxaAbundance.slice(0, 8).map(taxon => ({
-        name: taxon.genus,
-        // Generate 8 site values based on the actual probability with some variation
-        values: Array.from({ length: 8 }, (_, i) => {
-          const baseValue = taxon.probability;
-          const variation = (Math.random() - 0.5) * 20; // ±10% variation
-          return Math.max(30, Math.min(100, Math.round(baseValue + variation)));
-        })
-      }));
-    }
-    
-    // Fallback hardcoded data
-    return [
-      { name: 'Pseudomonas', values: [92, 78, 85, 45, 67, 88, 73, 91] },
-      { name: 'Streptococcus', values: [45, 67, 52, 88, 91, 42, 79, 65] },
-      { name: 'Bacillus', values: [78, 85, 91, 72, 54, 89, 66, 77] },
-      { name: 'Escherichia', values: [32, 48, 65, 78, 82, 55, 71, 59] },
-      { name: 'Spirotrichea', values: [88, 92, 76, 84, 69, 95, 81, 87] },
-      { name: 'Choanozoa', values: [65, 71, 84, 91, 77, 68, 89, 73] },
-      { name: 'Actinobacteria', values: [55, 62, 78, 85, 92, 71, 64, 80] },
-      { name: 'Chloroplastida', values: [71, 84, 68, 52, 88, 76, 91, 63] },
-    ];
+  const recentAnalyses = [
+    { id: '1', sample: 'DS-2024-001', location: 'Central Indian Basin', status: 'Completed', date: '2024-12-07' },
+    { id: '2', sample: 'DS-2024-002', location: 'Carlsberg Ridge', status: 'Processing', date: '2024-12-08' },
+    { id: '3', sample: 'DS-2024-003', location: 'Arabian Sea', status: 'Completed', date: '2024-12-06' },
+  ];
+
+  // Hardcoded novel taxa data points (deep-sea locations with intensity values)
+  const novelTaxaData = {
+    type: 'FeatureCollection',
+    features: [
+      // Indian Ocean - Central Indian Basin
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [75.0, -5.0] }, properties: { intensity: 0.8 } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [77.0, -6.0] }, properties: { intensity: 0.9 } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [73.0, -4.5] }, properties: { intensity: 0.7 } },
+      
+      // Carlsberg Ridge
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [57.0, 0.0] }, properties: { intensity: 0.85 } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [58.5, 1.0] }, properties: { intensity: 0.75 } },
+      
+      // Arabian Sea
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [65.0, 15.0] }, properties: { intensity: 0.6 } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [67.0, 14.0] }, properties: { intensity: 0.65 } },
+      
+      // Pacific Ocean - Mariana Trench area
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [145.0, 12.0] }, properties: { intensity: 0.95 } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [146.5, 11.5] }, properties: { intensity: 0.9 } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [144.0, 12.5] }, properties: { intensity: 0.85 } },
+      
+      // Atlantic Ocean - Mid-Atlantic Ridge
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [-30.0, 25.0] }, properties: { intensity: 0.7 } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [-28.0, 24.0] }, properties: { intensity: 0.75 } },
+      
+      // Southern Ocean - near Antarctica
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [0.0, -60.0] }, properties: { intensity: 0.6 } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [10.0, -58.0] }, properties: { intensity: 0.55 } },
+      
+      // Additional Indian Ocean sites
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [80.0, -8.0] }, properties: { intensity: 0.7 } },
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [72.0, -3.0] }, properties: { intensity: 0.65 } },
+    ]
   };
-  
-  const heatmapData = generateHeatmapData();
+
+  const heatmapLayer = {
+    id: 'novel-taxa-heatmap',
+    type: 'heatmap',
+    source: 'novel-taxa',
+    maxzoom: 9,
+    paint: {
+      'heatmap-weight': {
+        property: 'intensity',
+        type: 'exponential',
+        stops: [
+          [0, 0],
+          [1, 1]
+        ]
+      },
+      'heatmap-intensity': {
+        stops: [
+          [0, 1],
+          [9, 2]
+        ]
+      },
+      'heatmap-color': [
+        'interpolate',
+        ['linear'],
+        ['heatmap-density'],
+        0, 'rgba(147, 51, 234, 0)',
+        0.2, 'rgba(147, 51, 234, 0.2)',
+        0.4, 'rgba(168, 85, 247, 0.4)',
+        0.6, 'rgba(192, 132, 252, 0.5)',
+        0.8, 'rgba(217, 70, 239, 0.6)',
+        1, 'rgba(236, 72, 153, 0.7)'
+      ],
+      'heatmap-radius': {
+        stops: [
+          [0, 25],
+          [9, 50]
+        ]
+      },
+      'heatmap-opacity': 0.5
+    }
+  };
 
   return (
     <div className="p-8 space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
-          <p className="text-gray-600 mt-1">Deep-sea biodiversity monitoring overview</p>
-        </div>
-        {analysisData.lastUpdated && (
-          <div className="text-sm text-gray-500">
-            Last updated: {analysisData.lastUpdated.toLocaleTimeString()}
-          </div>
-        )}
+      <div>
+        <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
+        <p className="text-gray-600 mt-1">Deep-sea biodiversity monitoring overview</p>
       </div>
 
       <div className="grid grid-cols-4 gap-6">
@@ -84,66 +132,34 @@ export default function Dashboard() {
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Taxa Abundance Heatmap</h3>
-        <div className="overflow-x-auto">
-          <div className="inline-block min-w-full">
-            <table className="min-w-full">
-              <thead>
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b-2 border-gray-200">
-                    Taxa
-                  </th>
-                  {['Site 1', 'Site 2', 'Site 3', 'Site 4', 'Site 5', 'Site 6', 'Site 7', 'Site 8'].map((site) => (
-                    <th key={site} className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b-2 border-gray-200">
-                      {site}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {heatmapData.map((taxon, rowIndex) => (
-                  <tr key={taxon.name} className={rowIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">
-                      {taxon.name}
-                    </td>
-                    {taxon.values.map((value, colIndex) => {
-                      const intensity = value / 100;
-                      const bgColor = `rgba(59, 130, 246, ${intensity})`; // Blue color with varying opacity
-                      const textColor = intensity > 0.6 ? 'text-white' : 'text-gray-900';
-                      return (
-                        <td
-                          key={`${taxon.name}-${colIndex}`}
-                          className={`px-4 py-3 text-sm text-center font-medium ${textColor} whitespace-nowrap transition-all hover:ring-2 hover:ring-blue-500 cursor-pointer`}
-                          style={{ backgroundColor: bgColor }}
-                          title={`${taxon.name} at Site ${colIndex + 1}: ${value}% abundance`}
-                        >
-                          {value}%
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-600">Low</span>
-              <div className="flex gap-1">
-                {[0.2, 0.4, 0.6, 0.8, 1.0].map((opacity) => (
-                  <div
-                    key={opacity}
-                    className="w-8 h-4 rounded"
-                    style={{ backgroundColor: `rgba(59, 130, 246, ${opacity})` }}
-                  />
-                ))}
-              </div>
-              <span className="text-xs text-gray-600">High</span>
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Abundance Heatmap</h3>
+        <div className="bg-gray-50 rounded-lg h-96 overflow-hidden relative">
+          <Map
+            initialViewState={{
+              longitude: 75,
+              latitude: 0,
+              zoom: 2,
+            }}
+            mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+            style={{ width: "100%", height: "100%" }}
+            projection="mercator"
+          >
+            {/* Heatmap Source and Layer */}
+            <Source id="novel-taxa" type="geojson" data={novelTaxaData}>
+              <Layer {...heatmapLayer} />
+            </Source>
+            
+            {/* Navigation Control */}
+            <div style={{ position: "absolute", top: 10, right: 10 }}>
+              <NavigationControl />
             </div>
-            <p className="text-xs text-gray-500">Hover over cells for detailed information</p>
-          </div>
+          </Map>
         </div>
       </div>
+
+
+
+
 
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
