@@ -1,24 +1,13 @@
-import React, { useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAnalysisWebSocket } from '../../hooks/useAnalysisWebSocket';
 import { useStore } from '../../store/useStore';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function AnalysisDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { 
-    logs, 
-    progress, 
-    clusteringResult, 
-    verificationUpdates, 
-    status, 
-    errorMessage,
-    sampleStatus
-  } = useAnalysisWebSocket(id);
-
   const { getSample } = useStore();
   const sample = getSample(id);
 
@@ -30,11 +19,41 @@ export default function AnalysisDetailScreen() {
     );
   }
 
+  const analysis = sample.latestAnalysis || {};
+  const results = analysis.results || [];
+  const totalSequences = analysis.count || analysis.total_sequences || 0;
+
+  const renderPredictionItem = ({ item, index }: { item: any, index: number }) => (
+    <View className="bg-card p-4 rounded-xl border border-gray-800 mb-3">
+      <View className="flex-row justify-between items-start mb-2">
+        <Text className="text-white font-bold text-lg">{item.header || `Sequence ${index + 1}`}</Text>
+        <View className="bg-green-900/30 px-2 py-1 rounded-md">
+          <Text className="text-green-400 text-xs font-bold">{(item.prediction?.class_prob * 100).toFixed(1)}% Conf.</Text>
+        </View>
+      </View>
+      
+      <View className="flex-row justify-between mb-2">
+        <View>
+          <Text className="text-gray-500 text-xs">Class</Text>
+          <Text className="text-accent font-medium">{item.prediction?.class || 'Unknown'}</Text>
+        </View>
+        <View>
+          <Text className="text-gray-500 text-xs">Genus</Text>
+          <Text className="text-white font-medium">{item.prediction?.genus || 'Unknown'}</Text>
+        </View>
+      </View>
+
+      <View className="mt-2 pt-2 border-t border-gray-800">
+         <Text className="text-gray-500 text-xs">Sequence Length: <Text className="text-gray-300">{item.sequence_length}</Text></Text>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
       <Stack.Screen options={{ 
         headerShown: true,
-        title: 'Analysis Details',
+        title: 'Analysis Results',
         headerStyle: { backgroundColor: '#0B1121' },
         headerTintColor: '#fff',
         headerTitleStyle: { fontWeight: 'bold' },
@@ -43,89 +62,33 @@ export default function AnalysisDetailScreen() {
             <Ionicons name="chevron-back" size={24} color="white" />
           </TouchableOpacity>
         ),
-        headerRight: () => (
-          <TouchableOpacity>
-            <Ionicons name="ellipsis-horizontal" size={24} color="white" />
-          </TouchableOpacity>
-        )
       }} />
       
-      <ScrollView className="flex-1 p-4">
-        <Text className="text-3xl font-bold text-white mb-1">Analysis #A4B1-C9D2</Text>
-        <Text className="text-gray-500 mb-6">Completed on {new Date().toLocaleDateString()}</Text>
-
-        {/* Stats Grid */}
-        <View className="flex-row flex-wrap justify-between mb-4">
-          <View className="w-[48%] bg-card p-4 rounded-xl border border-gray-800 mb-4">
-            <Text className="text-gray-400 mb-2">Sequences</Text>
-            <Text className="text-white font-bold text-2xl">
-              {clusteringResult?.total_sequences?.toLocaleString() || '1,203,456'}
-            </Text>
-          </View>
-          <View className="w-[48%] bg-card p-4 rounded-xl border border-gray-800 mb-4">
-            <Text className="text-gray-400 mb-2">Clusters</Text>
-            <Text className="text-white font-bold text-2xl">
-              {clusteringResult?.num_clusters?.toLocaleString() || '8,732'}
-            </Text>
-          </View>
-          <View className="w-[48%] bg-card p-4 rounded-xl border border-gray-800">
-            <Text className="text-gray-400 mb-2">Novel Clusters</Text>
-            <Text className="text-white font-bold text-2xl">
-              {clusteringResult?.num_novel_clusters?.toLocaleString() || '1,452'}
-            </Text>
-          </View>
-          <View className="w-[48%] bg-card p-4 rounded-xl border border-gray-800">
-            <Text className="text-gray-400 mb-2">Alpha Diversity</Text>
-            <Text className="text-white font-bold text-2xl">0.89</Text>
-          </View>
-        </View>
-
-        {/* Cluster Visualization */}
-        <View className="bg-card p-4 rounded-xl border border-gray-800 mb-4">
-          <Text className="text-white font-bold text-lg mb-4">Cluster Visualization</Text>
-          <View className="h-64 bg-black rounded-lg items-center justify-center overflow-hidden">
-             {/* Placeholder for 3D blob - using a simple view or icon for now */}
-             <View className="w-32 h-32 bg-blue-500/20 rounded-full blur-3xl absolute top-10 left-10" />
-             <View className="w-32 h-32 bg-red-500/20 rounded-full blur-3xl absolute bottom-10 right-10" />
-             <MaterialCommunityIcons name="molecule" size={80} color="#4ADE80" />
-             {status === 'running' && <ActivityIndicator size="large" color="#4ADE80" className="absolute" />}
-          </View>
-        </View>
-
-        {/* On-Chain Details */}
-        <View className="bg-card p-4 rounded-xl border border-gray-800 mb-6">
-          <Text className="text-white font-bold text-lg mb-4">On-Chain Details</Text>
-          
-          <View className="flex-row justify-between items-center mb-4">
-            <View>
-              <Text className="text-gray-400 text-xs mb-1">Analysis Hash</Text>
-              <Text className="text-white font-mono">0x1a2b...c3d4</Text>
-            </View>
-            <Ionicons name="copy-outline" size={20} color="#4ADE80" />
-          </View>
-
-          <View className="flex-row justify-between items-center mb-4">
-            <View>
-              <Text className="text-gray-400 text-xs mb-1">AI Model Hash</Text>
-              <Text className="text-white font-mono">0x5e6f...g7h8</Text>
-            </View>
-            <Ionicons name="copy-outline" size={20} color="#4ADE80" />
-          </View>
-
+      <View className="p-4 bg-background flex-1">
+        <View className="flex-row justify-between items-center mb-6">
           <View>
-            <Text className="text-gray-400 text-xs mb-1">ZK Verification</Text>
-            <View className="flex-row items-center">
-              <Ionicons name="checkmark-circle" size={16} color="#4ADE80" style={{ marginRight: 4 }} />
-              <Text className="text-green-400 font-bold">Verified</Text>
-            </View>
+            <Text className="text-3xl font-bold text-white">Predictions</Text>
+            <Text className="text-gray-500">Based on AI Model v2.1</Text>
+          </View>
+          <View className="bg-card px-4 py-2 rounded-xl border border-gray-800 items-center">
+             <Text className="text-gray-400 text-xs">Total Sequences</Text>
+             <Text className="text-white font-bold text-xl">{totalSequences}</Text>
           </View>
         </View>
 
-        <TouchableOpacity className="bg-accent p-4 rounded-xl items-center mb-8">
-          <Text className="text-background font-bold text-lg">View Full Report</Text>
-        </TouchableOpacity>
-
-      </ScrollView>
+        <FlatList
+          data={results}
+          renderItem={renderPredictionItem}
+          keyExtractor={(item, index) => index.toString()}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View className="items-center justify-center mt-10">
+              <Text className="text-gray-500">No predictions available yet.</Text>
+            </View>
+          }
+        />
+      </View>
     </SafeAreaView>
   );
 }

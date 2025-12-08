@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, ScrollView, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
@@ -10,9 +10,24 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function SamplesScreen() {
   const router = useRouter();
-  const { samples, addSample } = useStore();
+  const { samples, addSample, updateSampleStatus, setSampleAnalysisResult, updateSampleProgress } = useStore();
   const [uploading, setUploading] = useState(false);
-  const [filter, setFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredSamples = useMemo(() => {
+    return samples.filter(sample => {
+      const matchesStatus = statusFilter === 'All' || 
+        (statusFilter === 'Verified' && sample.status === 'complete') ||
+        (statusFilter === 'Pending' && (sample.status === 'uploading' || sample.status === 'processing')) ||
+        (statusFilter === 'Failed' && sample.status === 'error');
+      
+      const matchesSearch = sample.fileName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            sample.fileId.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return matchesStatus && matchesSearch;
+    });
+  }, [samples, statusFilter, searchQuery]);
 
   const handleUpload = async () => {
     try {
@@ -26,30 +41,45 @@ export default function SamplesScreen() {
       const file = result.assets[0];
       setUploading(true);
 
+      // Generate IDs client-side
+      const fileId = Date.now().toString();
+      const sampleId = Math.floor(Math.random() * 10000);
+
+      // Create initial sample state
+      const newSample: Sample = {
+        fileId: fileId,
+        sampleId: sampleId,
+        status: 'processing',
+        fileName: file.name,
+        uploadDate: new Date().toISOString(),
+        logs: ['Upload started...'],
+        progress: [{ step: 'Upload', status: 'complete' }, { step: 'Analysis', status: 'processing' }],
+        verificationUpdates: [],
+      };
+
+      addSample(newSample);
+
       try {
         const response = await uploadFile(file);
-        const { file_id, sample_id } = response;
-
-        const newSample: Sample = {
-          fileId: file_id,
-          sampleId: sample_id,
-          status: 'uploading',
-          fileName: file.name,
-          uploadDate: new Date().toISOString(),
-          logs: [],
-          progress: [],
-          verificationUpdates: [],
+        
+        const analysisResult = {
+            total_sequences: response.count,
+            ...response
         };
 
-        addSample(newSample);
+        setSampleAnalysisResult(fileId, analysisResult);
+        updateSampleStatus(fileId, 'complete');
+        updateSampleProgress(fileId, { step: 'Analysis', status: 'complete' });
+        
         setUploading(false);
         
         // Navigate to sample detail
-        router.push(`/sample/${file_id}` as any);
+        router.push(`/sample/${fileId}` as any);
 
       } catch (error) {
         console.error(error);
         Alert.alert('Upload Failed', 'Could not upload file.');
+        updateSampleStatus(fileId, 'error');
         setUploading(false);
       }
 
@@ -96,27 +126,42 @@ export default function SamplesScreen() {
     <SafeAreaView className="flex-1 bg-background p-4">
       <View className="flex-row justify-between items-center mb-6">
         <Text className="text-3xl font-bold text-white">Samples</Text>
-        <TouchableOpacity onPress={() => {}}>
-          <Ionicons name="search" size={24} color="#94A3B8" />
-        </TouchableOpacity>
+      </View>
+
+      {/* Search Bar */}
+      <View className="bg-card border border-gray-800 rounded-xl flex-row items-center px-4 py-3 mb-4">
+        <Ionicons name="search" size={20} color="#94A3B8" />
+        <TextInput 
+          placeholder="Search samples..." 
+          placeholderTextColor="#64748B"
+          className="flex-1 ml-3 text-white font-medium"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Ionicons name="close-circle" size={20} color="#64748B" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Filters */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6 max-h-10">
-        {['Status: All', 'Cruise ID', 'Date'].map((f, i) => (
+        {['All', 'Verified', 'Pending', 'Failed'].map((f, i) => (
           <TouchableOpacity 
             key={i} 
-            className={`px-4 py-2 rounded-full mr-2 ${i === 0 ? 'bg-green-100' : 'bg-card border border-gray-700'}`}
+            onPress={() => setStatusFilter(f)}
+            className={`px-4 py-2 rounded-full mr-2 ${statusFilter === f ? 'bg-accent' : 'bg-card border border-gray-700'}`}
           >
-            <Text className={`text-sm font-medium ${i === 0 ? 'text-green-800' : 'text-gray-300'}`}>
-              {f} {i === 0 && '▼'} {i !== 0 && '▼'}
+            <Text className={`text-sm font-medium ${statusFilter === f ? 'text-background' : 'text-gray-300'}`}>
+              {f}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
       <FlatList
-        data={samples}
+        data={filteredSamples}
         renderItem={renderItem}
         keyExtractor={(item) => item.fileId}
         ListEmptyComponent={

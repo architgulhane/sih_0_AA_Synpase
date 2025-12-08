@@ -1,11 +1,71 @@
-import { View, Text } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, Switch, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
   return (
-    <SafeAreaView className="flex-1 bg-white items-center justify-center">
-      <Text className="text-xl font-semibold">Settings</Text>
-      <Text className="text-gray-500">App Version 1.0.0</Text>
+    <SafeAreaView className="flex-1 bg-background p-4">
+      <Text className="text-3xl font-bold text-white mb-6">Settings</Text>
+
+      <ScrollView>
+        <View className="bg-card rounded-xl border border-gray-800 mb-6 overflow-hidden">
+          <View className="p-4 border-b border-gray-800 flex-row justify-between items-center">
+            <View className="flex-row items-center">
+              <Ionicons name="person-circle-outline" size={24} color="#fff" />
+              <Text className="text-white font-medium ml-3">Account</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#64748B" />
+          </View>
+          <View className="p-4 border-b border-gray-800 flex-row justify-between items-center">
+            <View className="flex-row items-center">
+              <Ionicons name="wallet-outline" size={24} color="#fff" />
+              <Text className="text-white font-medium ml-3">Wallet Connection</Text>
+            </View>
+            <Text className="text-green-400 text-sm">Connected</Text>
+          </View>
+        </View>
+
+        <Text className="text-gray-500 font-bold mb-2 ml-2 uppercase text-xs">Preferences</Text>
+        <View className="bg-card rounded-xl border border-gray-800 mb-6 overflow-hidden">
+          <View className="p-4 border-b border-gray-800 flex-row justify-between items-center">
+            <View className="flex-row items-center">
+              <Ionicons name="notifications-outline" size={24} color="#fff" />
+              <Text className="text-white font-medium ml-3">Notifications</Text>
+            </View>
+            <Switch value={true} trackColor={{ false: '#334155', true: '#22D3EE' }} thumbColor="#fff" />
+          </View>
+          <View className="p-4 flex-row justify-between items-center">
+            <View className="flex-row items-center">
+              <Ionicons name="moon-outline" size={24} color="#fff" />
+              <Text className="text-white font-medium ml-3">Dark Mode</Text>
+            </View>
+            <Switch value={true} disabled trackColor={{ false: '#334155', true: '#22D3EE' }} thumbColor="#fff" />
+          </View>
+        </View>
+
+        <Text className="text-gray-500 font-bold mb-2 ml-2 uppercase text-xs">System</Text>
+        <View className="bg-card rounded-xl border border-gray-800 mb-6 overflow-hidden">
+          <View className="p-4 border-b border-gray-800 flex-row justify-between items-center">
+            <View className="flex-row items-center">
+              <MaterialCommunityIcons name="database-outline" size={24} color="#fff" />
+              <Text className="text-white font-medium ml-3">Clear Cache</Text>
+            </View>
+            <Text className="text-gray-500 text-sm">124 MB</Text>
+          </View>
+          <View className="p-4 flex-row justify-between items-center">
+            <View className="flex-row items-center">
+              <Ionicons name="information-circle-outline" size={24} color="#fff" />
+              <Text className="text-white font-medium ml-3">About</Text>
+            </View>
+            <Text className="text-gray-500 text-sm">v1.0.0</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity className="bg-red-900/20 border border-red-900 p-4 rounded-xl items-center">
+          <Text className="text-red-400 font-bold">Log Out</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }
