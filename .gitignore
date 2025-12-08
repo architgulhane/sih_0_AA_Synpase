@@ -1,0 +1,32 @@
+# Virtual environment
+.venv/
+env/
+venv/
+*.pyc
+__pycache__/
+
+# IDE-specific files
+.vscode/
+.idea/
+
+# Database files
+*.sqlite3
+*.db
+*.bak
+
+# Log files
+*.log
+
+# Environment variables and secrets
+.env
+.env.*
+secrets.toml
+config.json
+
+# Build artifacts
+dist/
+build/
+
+# OS generated files
+.DS_Store
+Thumbs.db
